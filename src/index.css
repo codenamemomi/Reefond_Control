@@ -1,34 +1,29 @@
-:root {
-  font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
-  line-height: 1.5;
-  font-weight: 400;
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap');
+@import "tailwindcss";
 
-  color-scheme: light dark;
-  color: rgba(255, 255, 255, 0.87);
-  background-color: #242424;
-
-  font-synthesis: none;
-  text-rendering: optimizeLegibility;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+@theme {
+  --font-sans: "Outfit", ui-sans-serif, system-ui, sans-serif;
+  --color-ree-green: #006837;
+  --color-ree-light: #39B54A;
+  --color-ree-gray: #1F2937;
 }
 
-body {
-  margin: 0;
-  display: flex;
-  place-items: center;
-  min-width: 320px;
-  min-height: 100vh;
+@layer base {
+  body {
+    @apply bg-slate-50 text-slate-900 font-sans antialiased;
+  }
 }
 
-.base-container {
-  max-width: 1280px;
-  margin: 0 auto;
-  padding: 2rem;
-  text-align: center;
-}
+@layer components {
+  .glass-card {
+    @apply bg-white/70 backdrop-blur-xl border border-white/20 shadow-xl rounded-3xl;
+  }
 
-h1 {
-  font-size: 3.2em;
-  line-height: 1.1;
+  .premium-button {
+    @apply relative overflow-hidden bg-ree-green text-white px-8 py-3 rounded-2xl font-bold transition-all hover:bg-ree-light active:scale-95 shadow-lg shadow-ree-green/20;
+  }
+
+  .input-field {
+    @apply w-full px-6 py-4 rounded-2xl bg-white/50 border border-slate-200 focus:border-ree-green focus:ring-4 focus:ring-ree-green/10 outline-none transition-all font-medium;
+  }
 }
