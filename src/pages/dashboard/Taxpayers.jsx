@@ -19,7 +19,7 @@ import { motion } from 'framer-motion';
 import SidePanel from '../../components/ui/SidePanel';
 import Input from '../../components/ui/Input';
 import { clsx } from 'clsx';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 
 const TaxTypeBadge = ({ type }) => {
     const styles = {
@@ -41,6 +41,7 @@ const TaxTypeBadge = ({ type }) => {
 
 const Taxpayers = () => {
     const navigate = useNavigate();
+    const location = useLocation();
     const [taxpayers, setTaxpayers] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
@@ -96,9 +97,9 @@ const Taxpayers = () => {
 
     const [formStep, setFormStep] = useState(1);
 
-    const fetchTaxpayers = useCallback(async () => {
+    const fetchTaxpayers = useCallback(async (silent = false) => {
         try {
-            setLoading(true);
+            if (!silent) setLoading(true);
             const data = await taxpayerService.getTaxpayers({
                 ...filters,
                 search: searchTerm,
@@ -137,7 +138,12 @@ const Taxpayers = () => {
     useEffect(() => {
         fetchTaxpayers();
         fetchStats();
-    }, [fetchTaxpayers, fetchStats]);
+
+        // Handle drill-down from other pages
+        if (location.state?.taxpayerId) {
+            navigate(`/dashboard/taxpayers/${location.state.taxpayerId}`);
+        }
+    }, [fetchTaxpayers, fetchStats, location.state, navigate]);
 
     const handleSearch = (e) => {
         e.preventDefault();

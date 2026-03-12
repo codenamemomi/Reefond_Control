@@ -4,7 +4,7 @@ import { Calendar, ChevronRight } from 'lucide-react';
 const ComplianceTimeline = ({ timeline = [] }) => {
     const events = timeline.length > 0 ? timeline.slice(0, 3).map(e => ({
         date: new Date(e.due_date).toLocaleDateString('en-US', { month: 'short', day: '2-digit' }),
-        title: `${e.tax_type} Filing`,
+        title: `${e.taxpayer_name} • ${e.tax_type}`,
         type: e.is_late || new Date(e.due_date) < new Date() ? 'deadline' : 'upcoming'
     })) : [];
 

@@ -20,20 +20,23 @@ import { clsx } from 'clsx';
 import Modal from '../../components/ui/Modal';
 import Input from '../../components/ui/Input';
 
-const TabButton = ({ active, icon: TabIcon, label, onClick }) => (
-    <button
-        onClick={onClick}
-        className={clsx(
-            "flex items-center gap-2 px-6 py-4 border-b-2 transition-all font-black text-[10px] uppercase tracking-widest",
-            active
-                ? "border-ree-green text-ree-green bg-ree-green/[0.02]"
-                : "border-transparent text-slate-400 hover:text-slate-600 hover:bg-slate-50"
-        )}
-    >
-        <TabIcon className="w-4 h-4" />
-        {label}
-    </button>
-);
+const TabButton = ({ active, icon, label, onClick }) => {
+    const TabIcon = icon;
+    return (
+        <button
+            onClick={onClick}
+            className={clsx(
+                "flex items-center gap-2 px-6 py-4 border-b-2 transition-all font-black text-[10px] uppercase tracking-widest",
+                active
+                    ? "border-ree-green text-ree-green bg-ree-green/[0.02]"
+                    : "border-transparent text-slate-400 hover:text-slate-600 hover:bg-slate-50"
+            )}
+        >
+            <TabIcon className="w-4 h-4" />
+            {label}
+        </button>
+    );
+};
 
 const Settings = () => {
     const [activeTab, setActiveTab] = useState('general');
@@ -49,9 +52,15 @@ const Settings = () => {
     const fetchData = useCallback(async () => {
         setLoading(true);
         try {
-            if (activeTab === 'general' || activeTab === 'settings') {
+            if (activeTab === 'general') {
                 const data = await organizationService.getOrganization(orgId);
                 setOrg(data);
+            } else if (activeTab === 'settings') {
+                const [orgData] = await Promise.all([
+                    organizationService.getOrganization(orgId),
+                    organizationService.getOrganizationSettings(orgId)
+                ]);
+                setOrg(orgData);
             } else if (activeTab === 'team') {
                 const data = await organizationService.getOrganizationUsers(orgId);
                 setTeam(data || []);
@@ -67,13 +76,74 @@ const Settings = () => {
     }, [activeTab, orgId]);
 
     useEffect(() => {
-        fetchData();
-    }, [fetchData]);
+        if (orgId) fetchData();
+    }, [fetchData, orgId]);
 
     const handleUpdateOrg = async (e) => {
         e.preventDefault();
-        // Implementation for updating org settings
-        alert('Update logic and API connection in progress');
+        try {
+            setLoading(true);
+            await organizationService.updateOrganization(orgId, {
+                name: org.name,
+                legal_name: org.legal_name,
+            });
+            await fetchData();
+            alert('Organization details updated successfully.');
+        } catch (error) {
+            console.error("Error updating organization:", error);
+            alert('Failed to update organization.');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleInviteMember = async (e) => {
+        e.preventDefault();
+        const formData = new FormData(e.target);
+        const email = formData.get('email');
+        const role = formData.get('role');
+        try {
+            setLoading(true);
+            await organizationService.createInvitation(orgId, { email, role });
+            alert('Invitation sent successfully.');
+            e.target.reset();
+        } catch (error) {
+            console.error("Error sending invitation:", error);
+            alert('Failed to send invitation.');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleRegisterWorkspace = async (e) => {
+        e.preventDefault();
+        const formData = new FormData(e.target);
+        const data = {
+            name: formData.get('name'),
+            legal_name: formData.get('legal_name'),
+            registration_number: formData.get('registration_number'),
+            tax_identification_number: formData.get('tin'),
+        };
+        try {
+            setLoading(true);
+            await organizationService.createOrganization(data);
+            setIsOrgModalOpen(false);
+            await fetchData();
+            alert('Workspace registered successfully.');
+        } catch (error) {
+            console.error("Error registering workspace:", error);
+            alert('Failed to register workspace.');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleSwitchWorkspace = (ws) => {
+        const user = JSON.parse(localStorage.getItem('user') || '{}');
+        user.organization_id = ws.id;
+        user.organization_name = ws.name;
+        localStorage.setItem('user', JSON.stringify(user));
+        window.location.reload();
     };
 
     return (
@@ -139,15 +209,20 @@ const Settings = () => {
 
                                         <form onSubmit={handleUpdateOrg} className="space-y-6">
                                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                                <Input label="Company Name" value={org?.name} readOnly />
-                                                <Input label="Legal Name" value={org?.legal_name} readOnly />
-                                                <Input label="Registration Number" value={org?.registration_number} readOnly />
-                                                <Input label="Tax ID (TIN)" value={org?.tax_identification_number} readOnly />
+                                                <Input label="Company Name" value={org?.name || ''} onChange={e => setOrg({ ...org, name: e.target.value })} />
+                                                <Input label="Legal Name" value={org?.legal_name || ''} onChange={e => setOrg({ ...org, legal_name: e.target.value })} />
+                                                <Input label="Registration Number" value={org?.registration_number || ''} readOnly />
+                                                <Input label="Tax ID (TIN)" value={org?.tax_identification_number || ''} readOnly />
+                                            </div>
+                                            <div className="flex justify-end">
+                                                <button type="submit" className="bg-ree-green text-white px-8 py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-ree-light transition-all shadow-xl shadow-ree-green/20">
+                                                    Save Changes
+                                                </button>
                                             </div>
                                             <div className="bg-amber-50 rounded-2xl p-4 flex gap-3 border border-amber-100/50">
                                                 <Shield className="w-5 h-5 text-amber-500 shrink-0 mt-0.5" />
                                                 <p className="text-xs font-medium text-amber-700 leading-relaxed">
-                                                    Official company details are locked by the system regulator. Contact compliance to request administrative changes.
+                                                    Some official company details are locked by the system regulator. Contact compliance to request administrative changes.
                                                 </p>
                                             </div>
                                         </form>
@@ -172,61 +247,77 @@ const Settings = () => {
                         )}
 
                         {activeTab === 'team' && (
-                            <div className="bg-white rounded-[2.5rem] border border-slate-100 shadow-sm overflow-hidden">
-                                <div className="p-8 border-b border-slate-50 flex flex-col md:flex-row md:items-center justify-between gap-4">
-                                    <div>
+                            <div className="space-y-8">
+                                <div className="bg-white p-10 rounded-[2.5rem] border border-slate-100 shadow-sm">
+                                    <h3 className="font-black text-slate-900 italic text-xl mb-6">Invite Team Member</h3>
+                                    <form onSubmit={handleInviteMember} className="flex flex-col md:flex-row gap-4">
+                                        <div className="flex-[2]">
+                                            <Input name="email" type="email" placeholder="colleague@company.com" required />
+                                        </div>
+                                        <div className="flex-1">
+                                            <select name="role" className="w-full px-5 py-4 bg-slate-50/50 border border-slate-200 rounded-2xl outline-none focus:bg-white focus:border-ree-green/30 transition-all font-medium text-sm">
+                                                <option value="member">Member</option>
+                                                <option value="admin">Admin</option>
+                                                <option value="viewer">Viewer</option>
+                                            </select>
+                                        </div>
+                                        <button type="submit" className="flex-1 bg-slate-900 text-white rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-slate-800 transition-all flex items-center justify-center gap-2 px-6">
+                                            <Plus className="w-4 h-4" />
+                                            Invite
+                                        </button>
+                                    </form>
+                                </div>
+
+                                <div className="bg-white rounded-[2.5rem] border border-slate-100 shadow-sm overflow-hidden">
+                                    <div className="p-8 border-b border-slate-50">
                                         <h3 className="font-black text-slate-900 italic text-xl">Team Directory</h3>
                                         <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mt-1">Manage access for {team.length} specialists</p>
                                     </div>
-                                    <button className="bg-slate-900 text-white px-6 py-3 rounded-2xl font-black text-[10px] uppercase tracking-widest flex items-center gap-2 hover:bg-slate-800 transition-all">
-                                        <Plus className="w-4 h-4" />
-                                        Invite Member
-                                    </button>
-                                </div>
-                                <div className="overflow-x-auto">
-                                    <table className="w-full text-left">
-                                        <thead>
-                                            <tr className="bg-slate-50/50">
-                                                <th className="px-8 py-4 text-[10px] font-black uppercase tracking-widest text-slate-400">User / Identity</th>
-                                                <th className="px-8 py-4 text-[10px] font-black uppercase tracking-widest text-slate-400">Access Role</th>
-                                                <th className="px-8 py-4 text-[10px] font-black uppercase tracking-widest text-slate-400">Status</th>
-                                                <th className="px-8 py-4 text-[10px] font-black uppercase tracking-widest text-slate-400 text-right">Actions</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody className="divide-y divide-slate-50">
-                                            {team.map((member) => (
-                                                <tr key={member.id} className="group hover:bg-slate-50/50 transition-all">
-                                                    <td className="px-8 py-6">
-                                                        <div className="flex items-center gap-4">
-                                                            <div className="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center font-black text-slate-400 uppercase">
-                                                                {member.name[0]}
-                                                            </div>
-                                                            <div>
-                                                                <p className="text-sm font-black text-slate-900 leading-tight mb-1">{member.name}</p>
-                                                                <p className="text-xs text-slate-400 font-medium">{member.email}</p>
-                                                            </div>
-                                                        </div>
-                                                    </td>
-                                                    <td className="px-8 py-6">
-                                                        <span className="text-[10px] font-black uppercase tracking-widest px-3 py-1 bg-slate-100 text-slate-500 rounded-lg">
-                                                            {member.role}
-                                                        </span>
-                                                    </td>
-                                                    <td className="px-8 py-6">
-                                                        <div className="flex items-center gap-2">
-                                                            <div className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-                                                            <span className="text-xs font-bold text-slate-600">Active</span>
-                                                        </div>
-                                                    </td>
-                                                    <td className="px-8 py-6 text-right">
-                                                        <button className="p-2 text-slate-300 hover:text-rose-500 transition-colors">
-                                                            <Trash2 className="w-5 h-5" />
-                                                        </button>
-                                                    </td>
+                                    <div className="overflow-x-auto">
+                                        <table className="w-full text-left">
+                                            <thead>
+                                                <tr className="bg-slate-50/50">
+                                                    <th className="px-8 py-4 text-[10px] font-black uppercase tracking-widest text-slate-400">User / Identity</th>
+                                                    <th className="px-8 py-4 text-[10px] font-black uppercase tracking-widest text-slate-400">Access Role</th>
+                                                    <th className="px-8 py-4 text-[10px] font-black uppercase tracking-widest text-slate-400">Status</th>
+                                                    <th className="px-8 py-4 text-[10px] font-black uppercase tracking-widest text-slate-400 text-right">Actions</th>
                                                 </tr>
-                                            ))}
-                                        </tbody>
-                                    </table>
+                                            </thead>
+                                            <tbody className="divide-y divide-slate-50">
+                                                {team.map((member) => (
+                                                    <tr key={member.id} className="group hover:bg-slate-50/50 transition-all">
+                                                        <td className="px-8 py-6">
+                                                            <div className="flex items-center gap-4">
+                                                                <div className="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center font-black text-slate-400 uppercase">
+                                                                    {member.name?.[0] || 'U'}
+                                                                </div>
+                                                                <div>
+                                                                    <p className="text-sm font-black text-slate-900 leading-tight mb-1">{member.name}</p>
+                                                                    <p className="text-xs text-slate-400 font-medium">{member.email}</p>
+                                                                </div>
+                                                            </div>
+                                                        </td>
+                                                        <td className="px-8 py-6">
+                                                            <span className="text-[10px] font-black uppercase tracking-widest px-3 py-1 bg-slate-100 text-slate-500 rounded-lg">
+                                                                {member.role}
+                                                            </span>
+                                                        </td>
+                                                        <td className="px-8 py-6">
+                                                            <div className="flex items-center gap-2">
+                                                                <div className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                                                                <span className="text-xs font-bold text-slate-600">Active</span>
+                                                            </div>
+                                                        </td>
+                                                        <td className="px-8 py-6 text-right">
+                                                            <button className="p-2 text-slate-300 hover:text-rose-500 transition-colors">
+                                                                <Trash2 className="w-5 h-5" />
+                                                            </button>
+                                                        </td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    </div>
                                 </div>
                             </div>
                         )}
@@ -267,7 +358,7 @@ const Settings = () => {
                                                 </div>
                                             </div>
                                             <h4 className="text-xl font-black text-slate-900 mb-1 group-hover:text-ree-green transition-colors">{ws.name}</h4>
-                                            <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-6">{ws.type?.replace('_', ' ')}</p>
+                                            <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-6">{ws.type?.replace(/_/g, ' ')}</p>
 
                                             <div className="pt-6 border-t border-slate-50 flex items-center justify-between">
                                                 <div className="flex items-center gap-2">
@@ -275,7 +366,10 @@ const Settings = () => {
                                                     <span className="text-xs font-black text-slate-600">User Controlled</span>
                                                 </div>
                                                 {ws.id !== orgId ? (
-                                                    <button className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-ree-green hover:gap-3 transition-all">
+                                                    <button
+                                                        onClick={() => handleSwitchWorkspace(ws)}
+                                                        className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-ree-green hover:gap-3 transition-all"
+                                                    >
                                                         Switch
                                                         <ArrowRight className="w-3 h-3" />
                                                     </button>
@@ -323,12 +417,12 @@ const Settings = () => {
                 onClose={() => setIsOrgModalOpen(false)}
                 title="Register New Workspace"
             >
-                <form className="p-6 space-y-6">
+                <form onSubmit={handleRegisterWorkspace} className="p-6 space-y-6">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <Input label="Workspace Name" placeholder="e.g. Acme Corp" />
-                        <Input label="Legal Entity Name" placeholder="Full Registered Name" />
-                        <Input label="Admin Email" type="email" placeholder="admin@acme.com" />
-                        <Input label="Tax ID" placeholder="TIN Number" />
+                        <Input name="name" label="Workspace Name" placeholder="e.g. Acme Corp" required />
+                        <Input name="legal_name" label="Legal Entity Name" placeholder="Full Registered Name" required />
+                        <Input name="registration_number" label="Registration Number" placeholder="RC123456" required />
+                        <Input name="tin" label="Tax ID" placeholder="TIN Number" required />
                     </div>
                     <div className="pt-6 border-t border-slate-50 flex gap-4">
                         <button type="button" onClick={() => setIsOrgModalOpen(false)} className="flex-1 py-4 border-2 border-slate-100 rounded-2xl font-bold text-slate-500 uppercase tracking-widest text-xs">Cancel</button>

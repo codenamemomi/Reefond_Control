@@ -11,11 +11,13 @@ import {
     ArrowUpRight,
     Loader2
 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { dashboardService } from '../../api/dashboard';
 import { clsx } from 'clsx';
 import HealthScore from '../../components/dashboard/overview/HealthScore';
 
 const Compliance = () => {
+    const navigate = useNavigate();
     const [loading, setLoading] = useState(true);
     const [data, setData] = useState(null);
     const [error, setError] = useState(null);
@@ -170,7 +172,10 @@ const Compliance = () => {
                                         </div>
                                     </div>
                                 </div>
-                                <button className="p-2 text-slate-300 hover:text-ree-green transition-colors">
+                                <button
+                                    onClick={() => navigate(`/dashboard/taxpayers`, { state: { taxpayerId: concern.taxpayer_id } })}
+                                    className="p-2 text-slate-300 hover:text-ree-green transition-colors"
+                                >
                                     <ArrowUpRight className="w-5 h-5" />
                                 </button>
                             </div>
@@ -196,7 +201,11 @@ const Compliance = () => {
                             </thead>
                             <tbody className="divide-y divide-slate-50">
                                 {data?.recent_scores?.map((score, i) => (
-                                    <tr key={i} className="hover:bg-slate-50/50 transition-colors cursor-pointer group">
+                                    <tr
+                                        key={i}
+                                        onClick={() => navigate(`/dashboard/taxpayers`, { state: { taxpayerId: score.taxpayer_id } })}
+                                        className="hover:bg-slate-50/50 transition-colors cursor-pointer group"
+                                    >
                                         <td className="px-6 py-4 text-xs font-bold text-slate-700">{score.taxpayer_name}</td>
                                         <td className="px-6 py-4">
                                             <span className={clsx(

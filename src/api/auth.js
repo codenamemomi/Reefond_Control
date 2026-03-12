@@ -52,6 +52,19 @@ export const authService = {
         const response = await apiClient.get('/auth/me');
         return response.data;
     },
+
+    updateProfile: async (data) => {
+        const response = await apiClient.put('/auth/me', data);
+        return response.data;
+    },
+
+    changePassword: async (currentPassword, newPassword) => {
+        const response = await apiClient.post('/auth/change-password', {
+            current_password: currentPassword,
+            new_password: newPassword
+        });
+        return response.data;
+    }
 };
 
 export default apiClient;

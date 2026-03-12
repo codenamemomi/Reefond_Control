@@ -25,7 +25,7 @@ const TopNav = () => {
         navigate('/login');
     };
 
-    const [currentOrg] = useState('Ree-fond HQ');
+    const [currentOrg] = useState(user.organization?.name || 'Ree-fond HQ');
 
     return (
         <header className="h-20 bg-white/80 backdrop-blur-md border-b border-slate-200 px-6 md:px-10 flex items-center justify-between shrink-0 sticky top-0 z-20">
@@ -97,11 +97,11 @@ const TopNav = () => {
                                     <p className="text-xs text-slate-500 font-medium">{user.email || 'admin@reefond.com'}</p>
                                 </div>
                                 <div className="p-2">
-                                    <button className="w-full flex items-center gap-3 px-3 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-50 rounded-xl transition-colors">
+                                    <button onClick={() => navigate('/dashboard/profile')} className="w-full flex items-center gap-3 px-3 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-50 rounded-xl transition-colors">
                                         <User className="w-4 h-4" />
                                         Profile Settings
                                     </button>
-                                    <button className="w-full flex items-center gap-3 px-3 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-50 rounded-xl transition-colors">
+                                    <button onClick={() => navigate('/dashboard/profile')} className="w-full flex items-center gap-3 px-3 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-50 rounded-xl transition-colors">
                                         <Settings className="w-4 h-4" />
                                         Account Preferences
                                     </button>

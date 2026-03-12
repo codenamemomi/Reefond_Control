@@ -20,19 +20,22 @@ import {
 import { taxpayerService } from '../../api/taxpayers';
 import { clsx } from 'clsx';
 
-const InformationCard = ({ title, icon: Icon, children }) => (
-    <div className="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-sm">
-        <div className="flex items-center gap-3 mb-6">
-            <div className="w-10 h-10 rounded-xl bg-slate-50 flex items-center justify-center text-slate-400">
-                <Icon className="w-5 h-5" />
+const InformationCard = (props) => {
+    const Icon = props.icon;
+    return (
+        <div className="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-sm">
+            <div className="flex items-center gap-3 mb-6">
+                <div className="w-10 h-10 rounded-xl bg-slate-50 flex items-center justify-center text-slate-400">
+                    <Icon className="w-5 h-5" />
+                </div>
+                <h3 className="text-sm font-black text-slate-900 uppercase tracking-widest">{props.title}</h3>
             </div>
-            <h3 className="text-sm font-black text-slate-900 uppercase tracking-widest">{title}</h3>
+            <div className="space-y-4">
+                {props.children}
+            </div>
         </div>
-        <div className="space-y-4">
-            {children}
-        </div>
-    </div>
-);
+    );
+};
 
 const DetailItem = ({ label, value, highlight = false }) => (
     <div>
@@ -50,14 +53,22 @@ const TaxpayerDetails = () => {
     const { id } = useParams();
     const navigate = useNavigate();
     const [taxpayer, setTaxpayer] = useState(null);
+    const [footprints, setFootprints] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
+
+    const user = JSON.parse(localStorage.getItem('user') || '{}');
+    const isAdmin = user.role === 'ADMIN';
 
     const fetchTaxpayer = useCallback(async () => {
         try {
             setLoading(true);
-            const data = await taxpayerService.getTaxpayerById(id);
+            const [data, footprintsData] = await Promise.all([
+                taxpayerService.getTaxpayerById(id),
+                taxpayerService.getTaxpayerFootprints(id).catch(() => [])
+            ]);
             setTaxpayer(data);
+            setFootprints(footprintsData);
         } catch (err) {
             setError('Could not retrieve taxpayer details. The ID may be invalid.');
             console.error(err);
@@ -65,6 +76,17 @@ const TaxpayerDetails = () => {
             setLoading(false);
         }
     }, [id]);
+
+    const getActionDisplay = (action) => {
+        const mappings = {
+            'create': { label: 'Entity Created', icon: FileText, color: 'emerald', status: 'Success' },
+            'update': { label: 'Profile Updated', icon: FileText, color: 'blue', status: 'Update' },
+            'verify': { label: 'Entity Verified', icon: Shield, color: 'indigo', status: 'Verified' },
+            'soft_delete': { label: 'Entity Deleted', icon: AlertCircle, color: 'rose', status: 'Removed' },
+            'bulk_create': { label: 'Bulk Import Created', icon: FileText, color: 'emerald', status: 'Imported' }
+        };
+        return mappings[action] || { label: action.replace('_', ' '), icon: Clock, color: 'slate', status: 'Activity' };
+    };
 
     useEffect(() => {
         fetchTaxpayer();
@@ -249,29 +271,60 @@ const TaxpayerDetails = () => {
 
                     <InformationCard title="Recent Footprints" icon={Clock}>
                         <div className="space-y-6">
-                            {[
-                                { status: 'Success', action: 'PAYE Filing Submission', date: 'Oct 24, 2023', icon: FileText, color: 'blue' },
-                                { status: 'Alert', action: 'TIN Verification Request', date: 'Sept 12, 2023', icon: Shield, color: 'orange' },
-                                { status: 'Success', action: 'Registration Created', date: 'Aug 05, 2023', icon: CheckCircle2, color: 'emerald' },
-                            ].map((activity, i) => (
-                                <div key={i} className="flex gap-4 group">
-                                    <div className={`w-8 h-8 rounded-lg bg-${activity.color}-50 text-${activity.color}-500 flex items-center justify-center shrink-0`}>
-                                        <activity.icon className="w-4 h-4" />
-                                    </div>
-                                    <div>
-                                        <p className="text-xs font-black text-slate-900 leading-tight mb-1">{activity.action}</p>
-                                        <div className="flex items-center gap-2">
-                                            <span className="text-[10px] font-bold text-slate-400">{activity.date}</span>
-                                            <div className="w-1 h-1 rounded-full bg-slate-200" />
-                                            <span className={`text-[10px] font-black uppercase text-${activity.color}-600`}>{activity.status}</span>
+                            {footprints.length > 0 ? (
+                                footprints.map((log, i) => {
+                                    const display = getActionDisplay(log.action);
+                                    const Icon = display.icon;
+                                    return (
+                                        <div key={log.id || i} className="flex gap-4 group">
+                                            <div className={clsx(
+                                                "w-8 h-8 rounded-lg flex items-center justify-center shrink-0",
+                                                log.action === 'create' ? "bg-emerald-50" :
+                                                    log.action === 'update' ? "bg-blue-50" :
+                                                        log.action === 'verify' ? "bg-indigo-50" :
+                                                            log.action === 'soft_delete' ? "bg-rose-50" : "bg-slate-50",
+                                                log.action === 'create' ? "text-emerald-500" :
+                                                    log.action === 'update' ? "text-blue-500" :
+                                                        log.action === 'verify' ? "text-indigo-500" :
+                                                            log.action === 'soft_delete' ? "text-rose-500" : "text-slate-500"
+                                            )}>
+                                                <Icon className="w-4 h-4" />
+                                            </div>
+                                            <div>
+                                                <p className="text-xs font-black text-slate-900 leading-tight mb-1">{display.label}</p>
+                                                <div className="flex items-center gap-2">
+                                                    <span className="text-[10px] font-bold text-slate-400">
+                                                        {new Date(log.timestamp).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' })}
+                                                    </span>
+                                                    <div className="w-1 h-1 rounded-full bg-slate-200" />
+                                                    <span className={clsx(
+                                                        "text-[10px] font-black uppercase",
+                                                        log.action === 'create' ? "text-emerald-600" :
+                                                            log.action === 'update' ? "text-blue-600" :
+                                                                log.action === 'verify' ? "text-indigo-600" :
+                                                                    log.action === 'soft_delete' ? "text-rose-600" : "text-slate-600"
+                                                    )}>
+                                                        {display.status}</span>
+                                                </div>
+                                            </div>
                                         </div>
-                                    </div>
+                                    );
+                                })
+                            ) : (
+                                <div className="py-8 text-center bg-slate-50 rounded-2xl border border-dashed border-slate-200">
+                                    <Clock className="w-8 h-8 text-slate-300 mx-auto mb-2" />
+                                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">No Activity Yet</p>
                                 </div>
-                            ))}
+                            )}
                         </div>
-                        <button className="w-full mt-6 py-4 bg-slate-50 rounded-2xl text-[10px] font-black uppercase tracking-widest text-slate-400 hover:bg-slate-100 transition-all">
-                            View Full Audit Trail
-                        </button>
+                        {isAdmin && (
+                            <button
+                                onClick={() => navigate(`/dashboard/logs?entity_id=${id}`)}
+                                className="w-full mt-6 py-4 bg-slate-50 rounded-2xl text-[10px] font-black uppercase tracking-widest text-slate-400 hover:bg-slate-100 transition-all font-mono"
+                            >
+                                View Full Audit Trail
+                            </button>
+                        )}
                     </InformationCard>
                 </div>
             </div>

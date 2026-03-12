@@ -44,5 +44,10 @@ export const taxpayerService = {
     verifyTaxpayer: async (id) => {
         const response = await apiClient.post(`/taxpayers/${id}/verify`);
         return response.data;
+    },
+
+    getTaxpayerFootprints: async (id) => {
+        const response = await apiClient.get(`/taxpayers/${id}/footprints`);
+        return response.data;
     }
 };

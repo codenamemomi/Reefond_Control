@@ -1,9 +1,11 @@
-import React from 'react';
-import { motion } from 'framer-motion';
-import { ShieldCheck, Info } from 'lucide-react';
+import React, { useState } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { ShieldCheck, Info, XCircle } from 'lucide-react';
 import { clsx } from 'clsx';
 
 const HealthScore = ({ score = 0, rank = "Top 5%", trend = "+2.4%" }) => {
+    const [showMethodology, setShowMethodology] = useState(false);
+
     const getColor = (s) => {
         if (s >= 90) return 'text-emerald-500';
         if (s >= 70) return 'text-amber-500';
@@ -28,7 +30,11 @@ const HealthScore = ({ score = 0, rank = "Top 5%", trend = "+2.4%" }) => {
     return (
         <div className="bg-white rounded-[2.5rem] border border-slate-100 shadow-sm p-8 flex flex-col items-center justify-center relative overflow-hidden group">
             <div className="absolute top-6 right-6">
-                <button title="Score Methodology" className="p-2 rounded-xl hover:bg-slate-50 text-slate-300 hover:text-slate-400 transition-colors">
+                <button
+                    onClick={() => setShowMethodology(true)}
+                    title="Score Methodology"
+                    className="p-2 rounded-xl hover:bg-slate-50 text-slate-300 hover:text-slate-400 transition-colors"
+                >
                     <Info className="w-5 h-5" />
                 </button>
             </div>
@@ -96,6 +102,61 @@ const HealthScore = ({ score = 0, rank = "Top 5%", trend = "+2.4%" }) => {
                     )}>{trend}</p>
                 </div>
             </div>
+
+            <AnimatePresence>
+                {showMethodology && (
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4"
+                    >
+                        <motion.div
+                            initial={{ scale: 0.95, opacity: 0 }}
+                            animate={{ scale: 1, opacity: 1 }}
+                            exit={{ scale: 0.95, opacity: 0 }}
+                            className="bg-white rounded-[2.5rem] shadow-2xl w-full max-w-md p-8 relative flex flex-col z-[60]"
+                        >
+                            <button
+                                onClick={() => setShowMethodology(false)}
+                                className="absolute top-6 right-6 w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center text-slate-400 hover:bg-slate-200 transition-all"
+                            >
+                                <XCircle className="w-5 h-5" />
+                            </button>
+                            <div className="flex items-center gap-4 mb-6">
+                                <div className="w-12 h-12 bg-blue-50 text-blue-500 rounded-2xl flex items-center justify-center">
+                                    <Info className="w-6 h-6" />
+                                </div>
+                                <h3 className="text-xl font-black text-slate-900 tracking-tight">Score Methodology</h3>
+                            </div>
+
+                            <div className="space-y-4">
+                                <div className="flex items-start gap-4 p-4 rounded-2xl bg-emerald-50 text-emerald-900">
+                                    <div className="w-10 h-10 rounded-xl bg-emerald-500 text-white flex items-center justify-center font-black shrink-0">90+</div>
+                                    <div>
+                                        <h4 className="font-black text-emerald-700">Healthy</h4>
+                                        <p className="text-xs font-medium opacity-80 mt-1">Full compliance with regulatory standards. No outstanding critical alerts.</p>
+                                    </div>
+                                </div>
+                                <div className="flex items-start gap-4 p-4 rounded-2xl bg-amber-50 text-amber-900">
+                                    <div className="w-10 h-10 rounded-xl bg-amber-500 text-white flex items-center justify-center font-black shrink-0">70+</div>
+                                    <div>
+                                        <h4 className="font-black text-amber-700">Needs Attention</h4>
+                                        <p className="text-xs font-medium opacity-80 mt-1">Minor infractions or upcoming deadlines detected. Action recommended.</p>
+                                    </div>
+                                </div>
+                                <div className="flex items-start gap-4 p-4 rounded-2xl bg-rose-50 text-rose-900">
+                                    <div className="w-10 h-10 rounded-xl bg-rose-500 text-white flex items-center justify-center font-black shrink-0">&lt;70</div>
+                                    <div>
+                                        <h4 className="font-black text-rose-700">At Risk</h4>
+                                        <p className="text-xs font-medium opacity-80 mt-1">Severe violations, missing documentation, or expired certifications detected.</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </motion.div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
         </div>
     );
 };

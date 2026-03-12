@@ -5,6 +5,7 @@ import { clsx } from 'clsx';
 const RefundTracker = ({ metrics = null }) => {
     const refunds = metrics && metrics.recent_activity ? metrics.recent_activity.slice(0, 2).map(r => ({
         id: r.case_number || (r.id ? r.id.substring(0, 8) : 'Pending'),
+        taxpayer: r.taxpayer_name,
         status: r.status,
         amount: `₦${Number(r.amount_claimed || 0).toLocaleString()}`,
         icon: r.status === 'disbursed' ? CheckCircle2 : Clock,
@@ -29,8 +30,11 @@ const RefundTracker = ({ metrics = null }) => {
                         key={refund.id}
                         className="p-5 rounded-2xl bg-slate-50 border border-slate-100/50 hover:bg-white hover:border-ree-green/20 transition-all group"
                     >
-                        <div className="flex items-center justify-between mb-3">
-                            <span className="text-sm font-black text-slate-900">Case {refund.id}</span>
+                        <div className="flex items-center justify-between mb-4">
+                            <div className="flex flex-col">
+                                <span className="text-[10px] font-black text-ree-green uppercase tracking-widest">{refund.taxpayer}</span>
+                                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Case {refund.id}</span>
+                            </div>
                             <div className={clsx(
                                 "px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider",
                                 refund.type === 'success' ? "bg-emerald-50 text-emerald-600" : "bg-amber-50 text-amber-600"
@@ -51,7 +55,7 @@ const RefundTracker = ({ metrics = null }) => {
             <button className="mt-8 py-4 bg-slate-900 text-white rounded-2xl text-xs font-black uppercase tracking-widest shadow-xl shadow-slate-900/10 hover:bg-slate-800 transition-all flex items-center justify-center gap-2">
                 Initiate New Refund
             </button>
-        </div>
+        </div >
     );
 };
 

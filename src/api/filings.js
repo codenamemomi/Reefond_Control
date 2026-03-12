@@ -37,8 +37,52 @@ export const filingService = {
         return response.data;
     },
 
+    updateFiling: async (id, data) => {
+        const response = await apiClient.put(`/filings/${id}`, data);
+        return response.data;
+    },
+
+    submitFiling: async (id, data) => {
+        const response = await apiClient.post(`/filings/${id}/submit/`, data);
+        return response.data;
+    },
+
     verifyFiling: async (id, data) => {
         const response = await apiClient.post(`/filings/${id}/verify/`, data);
+        return response.data;
+    },
+
+    rejectFiling: async (id, data) => {
+        const response = await apiClient.post(`/filings/${id}/reject/`, data);
+        return response.data;
+    },
+
+    createAmendment: async (id, data) => {
+        const response = await apiClient.post(`/filings/${id}/amendments/`, data);
+        return response.data;
+    },
+
+    getAmendments: async (id) => {
+        const response = await apiClient.get(`/filings/${id}/amendments/`);
+        return response.data;
+    },
+
+    getAttachments: async (id) => {
+        const response = await apiClient.get(`/filings/${id}/attachments/`);
+        return response.data;
+    },
+
+    addAttachment: async (id, data) => {
+        const response = await apiClient.post(`/filings/${id}/attachments/`, data);
+        return response.data;
+    },
+
+    getCalendarEvents: async (params = {}) => {
+        const queryParams = new URLSearchParams();
+        if (params.start_date) queryParams.append('start_date', params.start_date);
+        if (params.end_date) queryParams.append('end_date', params.end_date);
+
+        const response = await apiClient.get(`/filings/calendar/events/?${queryParams.toString()}`);
         return response.data;
     }
 };
