@@ -21,6 +21,8 @@ import Usage from './pages/dashboard/Usage';
 import Pricing from './pages/Pricing';
 import ProtectedRoute from './components/layout/ProtectedRoute';
 
+import { UserPermission } from './api/permissions';
+
 function App() {
   return (
     <Router>
@@ -42,18 +44,58 @@ function App() {
           </ProtectedRoute>
         }>
           <Route index element={<Overview />} />
-          <Route path="settings" element={<Settings />} />
+          <Route path="settings" element={
+            <ProtectedRoute requiredPermission={UserPermission.MANAGE_ORG_SETTINGS}>
+              <Settings />
+            </ProtectedRoute>
+          } />
           <Route path="profile" element={<ProfileSettings />} />
-          <Route path="logs" element={<Logs />} />
-          <Route path="billing" element={<Billing />} />
-          <Route path="usage" element={<Usage />} />
-          <Route path="taxpayers" element={<Taxpayers />} />
-          <Route path="taxpayers/:id" element={<TaxpayerDetails />} />
-          <Route path="filings" element={<Filings />} />
-          <Route path="refunds" element={<RefundCases />} />
+          <Route path="logs" element={
+            <ProtectedRoute requiredPermission={UserPermission.VIEW_API_LOGS}>
+              <Logs />
+            </ProtectedRoute>
+          } />
+          <Route path="billing" element={
+            <ProtectedRoute requiredPermission={UserPermission.UPGRADE_PLAN}>
+              <Billing />
+            </ProtectedRoute>
+          } />
+          <Route path="usage" element={
+            <ProtectedRoute requiredPermission={UserPermission.UPGRADE_PLAN}>
+              <Usage />
+            </ProtectedRoute>
+          } />
+          <Route path="taxpayers" element={
+            <ProtectedRoute requiredPermission={UserPermission.VIEW_TAXPAYERS}>
+              <Taxpayers />
+            </ProtectedRoute>
+          } />
+          <Route path="taxpayers/:id" element={
+            <ProtectedRoute requiredPermission={UserPermission.VIEW_TAXPAYERS}>
+              <TaxpayerDetails />
+            </ProtectedRoute>
+          } />
+          <Route path="filings" element={
+            <ProtectedRoute requiredPermission={UserPermission.VIEW_FILINGS}>
+              <Filings />
+            </ProtectedRoute>
+          } />
+          <Route path="refunds" element={
+            <ProtectedRoute requiredPermission={UserPermission.VIEW_REFUND_CASES}>
+              <RefundCases />
+            </ProtectedRoute>
+          } />
           <Route path="compliance" element={<Compliance />} />
-          <Route path="reports" element={<Reports />} />
-          <Route path="vault" element={<DocumentVault />} />
+          <Route path="reports" element={
+            <ProtectedRoute requiredPermission={UserPermission.VIEW_REPORTS}>
+              <Reports />
+            </ProtectedRoute>
+          } />
+          <Route path="vault" element={
+            <ProtectedRoute requiredPermission={UserPermission.VIEW_FILINGS}>
+              <DocumentVault />
+            </ProtectedRoute>
+          } />
           <Route path="analytics" element={<Analytics />} />
         </Route>
 

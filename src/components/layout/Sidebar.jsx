@@ -19,49 +19,61 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { clsx } from 'clsx';
+import { usePermissions } from '../../hooks/usePermissions';
+import { UserPermission } from '../../api/permissions';
 
 const Sidebar = ({ isOpen, setIsOpen }) => {
+    const { can } = usePermissions();
+
     const navigation = [
         {
             title: 'DASHBOARD', items: [
-                { name: 'Overview', icon: LayoutDashboard, path: '/dashboard' },
+                { name: 'Overview', icon: LayoutDashboard, path: '/dashboard', permission: UserPermission.VIEW_DASHBOARD },
             ]
         },
         {
             title: 'CORE OPERATIONS', items: [
-                { name: 'Taxpayers', icon: Users, path: '/dashboard/taxpayers' },
-                { name: 'Filings', icon: FileText, path: '/dashboard/filings' },
-                { name: 'Refund Cases', icon: TrendingUp, path: '/dashboard/refunds' },
-                { name: 'Compliance', icon: BadgeCheck, path: '/dashboard/compliance' },
+                { name: 'Taxpayers', icon: Users, path: '/dashboard/taxpayers', permission: UserPermission.VIEW_TAXPAYERS },
+                { name: 'Filings', icon: FileText, path: '/dashboard/filings', permission: UserPermission.VIEW_FILINGS },
+                { name: 'Refund Cases', icon: TrendingUp, path: '/dashboard/refunds', permission: UserPermission.VIEW_REFUND_CASES },
+                { name: 'Compliance', icon: BadgeCheck, path: '/dashboard/compliance', permission: UserPermission.VIEW_DASHBOARD },
             ]
         },
         {
             title: 'RESOURCES', items: [
-                { name: 'Reports', icon: FileText, path: '/dashboard/reports' },
-                { name: 'Document Vault', icon: Archive, path: '/dashboard/vault' },
-                { name: 'Analytics', icon: TrendingUp, path: '/dashboard/analytics' },
+                { name: 'Reports', icon: FileText, path: '/dashboard/reports', permission: UserPermission.VIEW_REPORTS },
+                { name: 'Document Vault', icon: Archive, path: '/dashboard/vault', permission: UserPermission.VIEW_FILINGS },
+                { name: 'Analytics', icon: TrendingUp, path: '/dashboard/analytics', permission: UserPermission.VIEW_DASHBOARD },
             ]
         },
         {
             title: 'DEVELOPERS', items: [
-                { name: 'API Keys', icon: Key, path: '/dashboard/api-keys' },
-                { name: 'Webhooks', icon: Webhook, path: '/dashboard/webhooks' },
-                { name: 'Sandbox', icon: Terminal, path: '/dashboard/sandbox' },
-                { name: 'Logs', icon: FileCode, path: '/dashboard/logs' },
+                { name: 'API Keys', icon: Key, path: '/dashboard/api-keys', permission: UserPermission.MANAGE_API_KEYS },
+                { name: 'Webhooks', icon: Webhook, path: '/dashboard/webhooks', permission: UserPermission.CONFIGURE_WEBHOOKS },
+                { name: 'Sandbox', icon: Terminal, path: '/dashboard/sandbox', permission: UserPermission.USE_SANDBOX },
+                { name: 'Logs', icon: FileCode, path: '/dashboard/logs', permission: UserPermission.VIEW_API_LOGS },
             ]
         },
         {
             title: 'BUSINESS', items: [
-                { name: 'Billing', icon: CreditCard, path: '/dashboard/billing' },
-                { name: 'Usage', icon: TrendingUp, path: '/dashboard/usage' },
+                { name: 'Billing', icon: CreditCard, path: '/dashboard/billing', permission: UserPermission.UPGRADE_PLAN },
+                { name: 'Usage', icon: TrendingUp, path: '/dashboard/usage', permission: UserPermission.UPGRADE_PLAN },
             ]
         },
         {
             title: 'SYSTEM', items: [
-                { name: 'Settings', icon: SettingsIcon, path: '/dashboard/settings' },
+                { name: 'Settings', icon: SettingsIcon, path: '/dashboard/settings', permission: UserPermission.MANAGE_ORG_SETTINGS },
             ]
         }
     ];
+
+    // Filter navigation groups and items
+    const filteredNavigation = navigation
+        .map(group => ({
+            ...group,
+            items: group.items.filter(item => !item.permission || can(item.permission))
+        }))
+        .filter(group => group.items.length > 0);
 
     return (
         <motion.aside
@@ -91,7 +103,7 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
 
             {/* Navigation Links */}
             <div className="flex-1 overflow-y-auto py-6 px-4 custom-scrollbar">
-                {navigation.map((group, idx) => (
+                {filteredNavigation.map((group, idx) => (
                     <div key={idx} className="mb-6 last:mb-0">
                         <AnimatePresence>
                             {isOpen && (

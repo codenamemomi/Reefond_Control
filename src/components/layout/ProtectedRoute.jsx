@@ -2,10 +2,12 @@ import React, { useEffect, useState } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { authService } from '../../api/auth';
 import { Loader2 } from 'lucide-react';
+import { usePermissions } from '../../hooks/usePermissions';
 
-const ProtectedRoute = ({ children }) => {
+const ProtectedRoute = ({ children, requiredPermission }) => {
     const [isLoading, setIsLoading] = useState(true);
     const [isAuthenticated, setIsAuthenticated] = useState(false);
+    const { can } = usePermissions();
     const location = useLocation();
 
     useEffect(() => {
@@ -41,6 +43,10 @@ const ProtectedRoute = ({ children }) => {
 
     if (!isAuthenticated) {
         return <Navigate to="/login" state={{ from: location }} replace />;
+    }
+
+    if (requiredPermission && !can(requiredPermission)) {
+        return <Navigate to="/dashboard" replace />;
     }
 
     return children;

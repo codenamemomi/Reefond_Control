@@ -20,6 +20,8 @@ import SidePanel from '../../components/ui/SidePanel';
 import Input from '../../components/ui/Input';
 import { clsx } from 'clsx';
 import { useNavigate, useLocation } from 'react-router-dom';
+import HasPermission from '../../components/auth/HasPermission';
+import { UserPermission } from '../../api/permissions';
 
 const TaxTypeBadge = ({ type }) => {
     const styles = {
@@ -63,16 +65,7 @@ const Taxpayers = () => {
         compliant_rate: 0
     });
     const [isStatsLoading, setIsStatsLoading] = useState(false);
-    const [user, setUser] = useState(null);
-
-    useEffect(() => {
-        const storedUser = localStorage.getItem('user');
-        if (storedUser) {
-            setUser(JSON.parse(storedUser));
-        }
-    }, []);
-
-    const canManageTaxpayers = user?.role === 'ADMIN' || user?.role === 'ACCOUNTANT';
+    // Simplified: Role/Permissions handled by HasPermission component or usePermissions hook
 
     const [newTaxpayer, setNewTaxpayer] = useState({
         full_name: '',
@@ -204,12 +197,15 @@ const Taxpayers = () => {
                     <p className="text-slate-500 font-medium">Global registry of individuals and corporate tax entities.</p>
                 </div>
                 <div className="flex items-center gap-3">
-                    {!canManageTaxpayers ? (
-                        <div className="flex items-center gap-3 opacity-60 grayscale blur-[1px] pointer-events-none" title="Unauthorized: Accountant/Admin only">
-                            <Plus className="w-5 h-5 text-slate-400" />
-                            <span className="text-sm font-black text-slate-400 uppercase tracking-widest">Register Taxpayer</span>
-                        </div>
-                    ) : (
+                    <HasPermission
+                        permission={UserPermission.MANAGE_TAXPAYERS}
+                        fallback={
+                            <div className="flex items-center gap-3 opacity-60 grayscale blur-[1px] pointer-events-none" title="Unauthorized: Sufficient permissions required">
+                                <Plus className="w-5 h-5 text-slate-400" />
+                                <span className="text-sm font-black text-slate-400 uppercase tracking-widest">Register Taxpayer</span>
+                            </div>
+                        }
+                    >
                         <button
                             onClick={() => setIsModalOpen(true)}
                             className="bg-ree-green text-white px-8 py-4 rounded-2xl font-black flex items-center gap-2 hover:bg-ree-light transition-all shadow-xl shadow-ree-green/20 active:scale-95 whitespace-nowrap text-sm uppercase tracking-widest"
@@ -217,7 +213,7 @@ const Taxpayers = () => {
                             <Plus className="w-5 h-5" />
                             <span>Register Taxpayer</span>
                         </button>
-                    )}
+                    </HasPermission>
                 </div>
             </div>
 
