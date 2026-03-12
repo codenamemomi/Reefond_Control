@@ -15,10 +15,19 @@ import {
     Clock,
     FileText,
     TrendingUp,
-    ExternalLink
+    AlertTriangle,
+    ExternalLink,
+    X,
+    Save,
+    Pencil
 } from 'lucide-react';
 import { taxpayerService } from '../../api/taxpayers';
+import { complianceService } from '../../api/compliance';
+import { filingService } from '../../api/filings';
+import { refundService } from '../../api/refunds';
 import { clsx } from 'clsx';
+import SidePanel from '../../components/ui/SidePanel';
+import Input from '../../components/ui/Input';
 
 const InformationCard = (props) => {
     const Icon = props.icon;
@@ -54,7 +63,13 @@ const TaxpayerDetails = () => {
     const navigate = useNavigate();
     const [taxpayer, setTaxpayer] = useState(null);
     const [footprints, setFootprints] = useState([]);
+    const [compliance, setCompliance] = useState(null);
+    const [recentFilings, setRecentFilings] = useState([]);
+    const [recentRefunds, setRecentRefunds] = useState([]);
+    const [unresolvedAlerts, setUnresolvedAlerts] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [editLoading, setEditLoading] = useState(false);
+    const [isEditOpen, setIsEditOpen] = useState(false);
     const [error, setError] = useState('');
 
     const user = JSON.parse(localStorage.getItem('user') || '{}');
@@ -63,12 +78,20 @@ const TaxpayerDetails = () => {
     const fetchTaxpayer = useCallback(async () => {
         try {
             setLoading(true);
-            const [data, footprintsData] = await Promise.all([
+            const [data, footprintsData, complianceData, filingsData, refundsData, alertsData] = await Promise.all([
                 taxpayerService.getTaxpayerById(id),
-                taxpayerService.getTaxpayerFootprints(id).catch(() => [])
+                taxpayerService.getTaxpayerFootprints(id).catch(() => []),
+                complianceService.getTaxpayerScore(id).catch(() => null),
+                filingService.getFilings({ taxpayer_id: id, size: 5 }).catch(() => ({ items: [] })),
+                refundService.getRefunds({ taxpayer_id: id, size: 5 }).catch(() => ({ items: [] })),
+                complianceService.getAlerts({ taxpayer_id: id, is_resolved: false }).catch(() => [])
             ]);
             setTaxpayer(data);
             setFootprints(footprintsData);
+            setCompliance(complianceData);
+            setRecentFilings(filingsData.items);
+            setRecentRefunds(refundsData.items);
+            setUnresolvedAlerts(alertsData);
         } catch (err) {
             setError('Could not retrieve taxpayer details. The ID may be invalid.');
             console.error(err);
@@ -135,6 +158,13 @@ const TaxpayerDetails = () => {
                     <span className="font-bold text-sm">Back to Directory</span>
                 </button>
                 <div className="flex items-center gap-3">
+                    <button
+                        onClick={() => setIsEditOpen(true)}
+                        className="px-6 py-3 bg-white border border-slate-200 rounded-xl font-bold text-slate-600 hover:bg-slate-50 transition-all text-xs uppercase tracking-widest flex items-center gap-2"
+                    >
+                        <Pencil className="w-3 h-3" />
+                        Edit Profile
+                    </button>
                     <button className="px-6 py-3 bg-white border border-slate-200 rounded-xl font-bold text-slate-600 hover:bg-slate-50 transition-all text-xs uppercase tracking-widest">
                         Export Profile
                     </button>
@@ -178,7 +208,15 @@ const TaxpayerDetails = () => {
                                 {taxpayer.is_verified ? 'Verified Entity' : 'Verification Pending'}
                             </span>
                         </div>
-                        <h1 className="text-4xl md:text-5xl font-black tracking-tight mb-2 italic uppercase">{taxpayer.full_name}</h1>
+                        <h1 className="text-4xl md:text-5xl font-black tracking-tight mb-2 italic uppercase flex flex-wrap items-center gap-4">
+                            {taxpayer.full_name}
+                            {unresolvedAlerts.length > 0 && (
+                                <div className="flex items-center gap-1.5 bg-rose-500/20 text-rose-400 text-[10px] font-black uppercase px-3 py-1 rounded-full border border-rose-500/30 animate-pulse normal-case italic-none tracking-widest">
+                                    <AlertTriangle className="w-3.5 h-3.5" />
+                                    {unresolvedAlerts.length} Critical Issues
+                                </div>
+                            )}
+                        </h1>
                         <p className="text-slate-400 font-bold text-lg flex items-center gap-2">
                             <Shield className="w-5 h-5 text-ree-green" />
                             TIN: <span className="text-white font-mono">{taxpayer.tin || 'NOT ASSIGNED'}</span>
@@ -204,7 +242,13 @@ const TaxpayerDetails = () => {
                     </div>
                     <div className="space-y-1">
                         <p className="text-[10px] font-black text-white/50 uppercase tracking-[0.2em]">Risk Score</p>
-                        <p className="text-xl font-black text-ree-green">Low Risk</p>
+                        <p className={clsx(
+                            "text-xl font-black capitalize",
+                            taxpayer.risk_level === 'low' ? 'text-emerald-400' :
+                                taxpayer.risk_level === 'high' ? 'text-rose-400' : 'text-amber-400'
+                        )}>
+                            {taxpayer.risk_level || 'Calculating...'}
+                        </p>
                     </div>
                 </div>
             </div>
@@ -244,6 +288,50 @@ const TaxpayerDetails = () => {
                             <DetailItem label="Employer Entity" value={taxpayer.employer?.name || 'Self-Employed / Independent'} />
                         </div>
                     </InformationCard>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                        <InformationCard title="Recent Filings" icon={FileText}>
+                            <div className="space-y-4">
+                                {recentFilings.length > 0 ? recentFilings.map(filing => (
+                                    <div key={filing.id} className="flex items-center justify-between p-4 bg-slate-50 rounded-2xl border border-slate-100 group hover:border-ree-green/30 transition-all cursor-pointer" onClick={() => navigate(`/dashboard/filings?taxpayer_id=${id}`)}>
+                                        <div>
+                                            <p className="text-xs font-black text-slate-900">{filing.tax_type} - {filing.period}</p>
+                                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{new Date(filing.due_date).toLocaleDateString()}</p>
+                                        </div>
+                                        <span className={clsx(
+                                            "text-[9px] font-black uppercase px-2 py-0.5 rounded-full border",
+                                            filing.status === 'completed' ? "bg-emerald-50 text-emerald-600 border-emerald-100" :
+                                                filing.status === 'overdue' ? "bg-rose-50 text-rose-600 border-rose-100" : "bg-blue-50 text-blue-600 border-blue-100"
+                                        )}>{filing.status}</span>
+                                    </div>
+                                )) : (
+                                    <p className="text-xs font-bold text-slate-400 italic py-2">No filing records found.</p>
+                                )}
+                                <button onClick={() => navigate(`/dashboard/filings?taxpayer_id=${id}`)} className="w-full py-3 text-[10px] font-black uppercase tracking-widest text-ree-green hover:underline">View All Filings</button>
+                            </div>
+                        </InformationCard>
+
+                        <InformationCard title="Refund Cases" icon={TrendingUp}>
+                            <div className="space-y-4">
+                                {recentRefunds.length > 0 ? recentRefunds.map(refund => (
+                                    <div key={refund.id} className="flex items-center justify-between p-4 bg-slate-50 rounded-2xl border border-slate-100 group hover:border-ree-green/30 transition-all cursor-pointer" onClick={() => navigate(`/dashboard/refunds?taxpayer_id=${id}`)}>
+                                        <div>
+                                            <p className="text-xs font-black text-slate-900">₦{parseFloat(refund.amount_claimed).toLocaleString()}</p>
+                                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{refund.case_number}</p>
+                                        </div>
+                                        <span className={clsx(
+                                            "text-[9px] font-black uppercase px-2 py-0.5 rounded-full border",
+                                            refund.status === 'disbursed' ? "bg-emerald-50 text-emerald-600 border-emerald-100" :
+                                                refund.status === 'rejected' ? "bg-rose-50 text-rose-600 border-rose-100" : "bg-blue-50 text-blue-600 border-blue-100"
+                                        )}>{refund.status}</span>
+                                    </div>
+                                )) : (
+                                    <p className="text-xs font-bold text-slate-400 italic py-2">No refund cases found.</p>
+                                )}
+                                <button onClick={() => navigate(`/dashboard/refunds?taxpayer_id=${id}`)} className="w-full py-3 text-[10px] font-black uppercase tracking-widest text-ree-green hover:underline">View All Refunds</button>
+                            </div>
+                        </InformationCard>
+                    </div>
                 </div>
 
                 {/* Right Column: Activity & Summary */}
@@ -251,23 +339,80 @@ const TaxpayerDetails = () => {
                     <InformationCard title="Compliance Health" icon={CheckCircle2}>
                         <div className="flex flex-col items-center py-6 text-center">
                             <div className="w-24 h-24 rounded-full border-8 border-slate-50 flex items-center justify-center mb-4 relative">
-                                <div className="absolute inset-0 rounded-full border-8 border-ree-green border-t-transparent -rotate-45" />
-                                <span className="text-2xl font-black text-slate-900">85%</span>
+                                <div
+                                    className={clsx(
+                                        "absolute inset-0 rounded-full border-8 border-t-transparent -rotate-45",
+                                        (compliance?.score || 0) >= 70 ? "border-ree-green" :
+                                            (compliance?.score || 0) >= 40 ? "border-amber-400" : "border-rose-500"
+                                    )}
+                                    style={{ clipPath: `conic-gradient(black ${(compliance?.score || 0)}%, transparent 0)` }}
+                                />
+                                <span className="text-2xl font-black text-slate-900">{compliance?.score || 0}%</span>
                             </div>
                             <p className="text-xs font-black text-slate-400 uppercase tracking-widest mb-1">Health Grade</p>
-                            <p className="text-sm font-bold text-ree-green">Excellent Standing</p>
+                            <p className={clsx(
+                                "text-sm font-bold",
+                                (compliance?.score || 0) >= 90 ? "text-emerald-500" :
+                                    (compliance?.score || 0) >= 70 ? "text-ree-green" :
+                                        (compliance?.score || 0) >= 40 ? "text-amber-500" : "text-rose-500"
+                            )}>
+                                {(compliance?.score || 0) >= 90 ? 'Perfect Standing' :
+                                    (compliance?.score || 0) >= 70 ? 'Excellent Standing' :
+                                        (compliance?.score || 0) >= 50 ? 'Fair Standing' : 'Critical Review Needed'}
+                            </p>
                         </div>
+
+                        {compliance?.triggered_rules?.length > 0 && (
+                            <div className="pt-6 border-t border-slate-50">
+                                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">Active Issues</p>
+                                <div className="space-y-3">
+                                    {compliance.triggered_rules.slice(0, 3).map((rule, i) => (
+                                        <div key={i} className="flex items-start gap-2">
+                                            <AlertCircle className="w-3 h-3 text-rose-500 shrink-0 mt-0.5" />
+                                            <div>
+                                                <p className="text-[10px] font-bold text-slate-700 leading-tight">{rule.rule_name || rule.rule_code.replace(/_/g, ' ')}</p>
+                                                <p className="text-[9px] font-black text-rose-500 mt-1">{rule.score_impact} Points</p>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+
                         <div className="pt-6 border-t border-slate-50 space-y-4">
                             <div className="flex justify-between items-center">
                                 <span className="text-xs font-bold text-slate-500">Filings Complete</span>
-                                <span className="text-xs font-black text-slate-900">{taxpayer.filing_count} Successes</span>
+                                <span className="text-xs font-black text-slate-900">{taxpayer.filing_count} Items</span>
                             </div>
                             <div className="flex justify-between items-center">
                                 <span className="text-xs font-bold text-slate-500">Active Refunds</span>
-                                <span className="text-xs font-black text-slate-900">{taxpayer.active_refund_cases} Open Cases</span>
+                                <span className="text-xs font-black text-slate-900">{taxpayer.active_refund_cases} Cases</span>
                             </div>
                         </div>
                     </InformationCard>
+
+                    {unresolvedAlerts.length > 0 && (
+                        <InformationCard title="Compliance Board" icon={AlertTriangle}>
+                            <div className="space-y-4">
+                                {unresolvedAlerts.map(alert => (
+                                    <div key={alert.id} className="p-4 bg-rose-50 rounded-2xl border border-rose-100 border-l-4 border-l-rose-500">
+                                        <div className="flex items-center gap-2 mb-2">
+                                            <span className={clsx(
+                                                "text-[8px] font-black uppercase px-2 py-0.5 rounded-full",
+                                                alert.alert_type === 'critical' ? 'bg-rose-500 text-white' : 'bg-amber-500 text-white'
+                                            )}>
+                                                {alert.alert_type}
+                                            </span>
+                                            <p className="text-[10px] font-black text-slate-900 uppercase tracking-widest">{new Date(alert.detected_date).toLocaleDateString()}</p>
+                                        </div>
+                                        <p className="text-xs font-black text-slate-900 mb-1">{alert.title}</p>
+                                        <p className="text-[10px] font-bold text-slate-500 leading-relaxed">{alert.description}</p>
+                                    </div>
+                                ))}
+                                <button className="w-full py-3 text-[10px] font-black uppercase tracking-widest text-rose-500 hover:underline">Open Dispute Center</button>
+                            </div>
+                        </InformationCard>
+                    )}
 
                     <InformationCard title="Recent Footprints" icon={Clock}>
                         <div className="space-y-6">
@@ -328,6 +473,116 @@ const TaxpayerDetails = () => {
                     </InformationCard>
                 </div>
             </div>
+
+            <SidePanel
+                isOpen={isEditOpen}
+                onClose={() => setIsEditOpen(false)}
+                title="Edit Taxpayer Identity"
+                subtitle={`Updating information for ${taxpayer?.full_name}`}
+            >
+                <div className="p-8 space-y-8">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div className="space-y-2">
+                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Full Legal Name</label>
+                            <input
+                                className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:bg-white focus:border-ree-green transition-all font-bold text-sm"
+                                defaultValue={taxpayer?.full_name}
+                                id="edit_full_name"
+                            />
+                        </div>
+                        <div className="space-y-2">
+                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Email Address</label>
+                            <input
+                                className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:bg-white focus:border-ree-green transition-all font-bold text-sm"
+                                defaultValue={taxpayer?.email}
+                                id="edit_email"
+                            />
+                        </div>
+                        <div className="space-y-2">
+                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Phone Number</label>
+                            <input
+                                className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:bg-white focus:border-ree-green transition-all font-bold text-sm"
+                                defaultValue={taxpayer?.phone_number}
+                                id="edit_phone"
+                            />
+                        </div>
+                        <div className="space-y-2">
+                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Tax Identification Number (TIN)</label>
+                            <input
+                                className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:bg-white focus:border-ree-green transition-all font-bold text-sm"
+                                defaultValue={taxpayer?.tin}
+                                id="edit_tin"
+                            />
+                        </div>
+                    </div>
+
+                    <div className="space-y-2">
+                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Resident Address</label>
+                        <textarea
+                            className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:bg-white focus:border-ree-green transition-all font-bold text-sm min-h-[100px]"
+                            defaultValue={taxpayer?.address}
+                            id="edit_address"
+                        />
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div className="space-y-2">
+                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Industry</label>
+                            <input
+                                className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:bg-white focus:border-ree-green transition-all font-bold text-sm"
+                                defaultValue={taxpayer?.industry}
+                                id="edit_industry"
+                            />
+                        </div>
+                        <div className="space-y-2">
+                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Job Title</label>
+                            <input
+                                className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:bg-white focus:border-ree-green transition-all font-bold text-sm"
+                                defaultValue={taxpayer?.job_title}
+                                id="edit_job_title"
+                            />
+                        </div>
+                    </div>
+
+                    <div className="pt-10 flex gap-4 border-t border-slate-100">
+                        <button
+                            onClick={() => setIsEditOpen(false)}
+                            className="flex-1 px-6 py-4 border border-slate-200 rounded-2xl font-black text-[10px] uppercase tracking-widest text-slate-500 hover:bg-slate-50 transition-all"
+                        >
+                            Cancel Changes
+                        </button>
+                        <button
+                            onClick={async () => {
+                                try {
+                                    setEditLoading(true);
+                                    const updateData = {
+                                        full_name: document.getElementById('edit_full_name').value,
+                                        email: document.getElementById('edit_email').value,
+                                        phone_number: document.getElementById('edit_phone').value,
+                                        tin: document.getElementById('edit_tin').value,
+                                        address: document.getElementById('edit_address').value,
+                                        industry: document.getElementById('edit_industry').value,
+                                        job_title: document.getElementById('edit_job_title').value,
+                                    };
+                                    await taxpayerService.updateTaxpayer(id, updateData);
+                                    setIsEditOpen(false);
+                                    fetchTaxpayer();
+                                } catch (error) {
+                                    console.error('Failed to update taxpayer', error);
+                                    alert('Failed to update taxpayer');
+                                } finally {
+                                    setEditLoading(false);
+                                }
+                            }}
+                            disabled={editLoading}
+                            className="flex-[2] bg-ree-green text-white px-6 py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-ree-light transition-all shadow-xl shadow-ree-green/20 flex items-center justify-center gap-2"
+                        >
+                            {editLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                            Synchronize Updates
+                        </button>
+                    </div>
+                </div>
+            </SidePanel>
         </div>
     );
 };

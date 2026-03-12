@@ -2,12 +2,13 @@ import apiClient from './auth';
 
 export const refundService = {
     getRefunds: async (params = {}) => {
-        const { page = 1, size = 20, search = '', status = '', priority = '' } = params;
+        const { page = 1, size = 20, search = '', status = '', priority = '', taxpayer_id = '' } = params;
         let url = `/refunds/?page=${page}&size=${size}`;
 
         if (search) url += `&search=${encodeURIComponent(search)}`;
         if (status) url += `&status=${status}`;
         if (priority) url += `&priority=${priority}`;
+        if (taxpayer_id) url += `&taxpayer_id=${taxpayer_id}`;
 
         const response = await apiClient.get(url);
         return response.data;

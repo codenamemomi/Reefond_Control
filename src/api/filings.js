@@ -2,13 +2,14 @@ import apiClient from './auth';
 
 export const filingService = {
     getFilings: async (params = {}) => {
-        const { page = 1, size = 20, search = '', status = '', tax_type = '', state = '' } = params;
+        const { page = 1, size = 20, search = '', status = '', tax_type = '', state = '', taxpayer_id = '' } = params;
         let url = `/filings/?page=${page}&size=${size}`;
 
         if (search) url += `&search=${encodeURIComponent(search)}`;
         if (status) url += `&status=${status}`;
         if (tax_type) url += `&tax_type=${tax_type}`;
         if (state) url += `&state=${state}`;
+        if (taxpayer_id) url += `&taxpayer_id=${taxpayer_id}`;
 
         const response = await apiClient.get(url);
         return response.data;

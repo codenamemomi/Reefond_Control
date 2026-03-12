@@ -225,13 +225,22 @@ const RefundCases = () => {
     const [isPanelOpen, setIsPanelOpen] = useState(false);
     const [selectedRefund, setSelectedRefund] = useState(null);
     const [documents, setDocuments] = useState([]);
+    const queryParams = new URLSearchParams(location.search);
+    const taxpayerId = queryParams.get('taxpayer_id');
 
     const fetchData = useCallback(async (silent = false) => {
         if (!silent) setLoading(true);
         try {
             const [listData, statsData] = await Promise.all([
-                refundService.getRefunds({ page, search, ...filters }),
-                refundService.getRefundStats()
+                refundService.getRefunds({
+                    page,
+                    search,
+                    taxpayer_id: taxpayerId,
+                    ...filters
+                }),
+                refundService.getRefundStats({
+                    taxpayer_id: taxpayerId
+                })
             ]);
             setRefunds(listData.items);
             setTotalPages(listData.pages);
@@ -246,7 +255,7 @@ const RefundCases = () => {
         } finally {
             setLoading(false);
         }
-    }, [page, search, filters]);
+    }, [page, search, filters, taxpayerId]);
 
     useEffect(() => {
         fetchData();

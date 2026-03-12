@@ -212,13 +212,22 @@ const Filings = () => {
     const [isPanelOpen, setIsPanelOpen] = useState(false);
     const [selectedFiling, setSelectedFiling] = useState(null);
     const [attachments, setAttachments] = useState([]);
+    const queryParams = new URLSearchParams(location.search);
+    const taxpayerId = queryParams.get('taxpayer_id');
 
     const fetchData = useCallback(async (silent = false) => {
         if (!silent) setLoading(true);
         try {
             const [listData, statsData] = await Promise.all([
-                filingService.getFilings({ page, search, ...filters }),
-                filingService.getFilingStats()
+                filingService.getFilings({
+                    page,
+                    search,
+                    taxpayer_id: taxpayerId,
+                    ...filters
+                }),
+                filingService.getFilingStats({
+                    taxpayer_id: taxpayerId
+                })
             ]);
             setFilings(listData.items);
             setTotalPages(listData.pages);
@@ -233,7 +242,7 @@ const Filings = () => {
         } finally {
             setLoading(false);
         }
-    }, [page, search, filters]);
+    }, [page, search, filters, taxpayerId]);
 
     useEffect(() => {
         fetchData();
